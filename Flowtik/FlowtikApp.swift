@@ -9,10 +9,19 @@ import SwiftUI
 
 @main
 struct FlowtikApp: App {
+    
+    @AppStorage("isLoggedIn") var isLoggedIn = false
+    
     var body: some Scene {
         WindowGroup {
-//            LoginView()
-            DashboardView()
+           if isLoggedIn
+            {
+                MainTabbar()
+                    
+            }
+            else{
+                LoginView()
+            }
         }
     }
 }

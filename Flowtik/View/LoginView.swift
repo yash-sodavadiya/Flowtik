@@ -5,6 +5,11 @@ struct LoginView: View {
     @State private var navigateToDashboard = false
     @State private var showAlert = false
     @State private var loginFailed = false
+    @State private var showCustomAlert = false
+    @State private var alertTitle = ""
+    @State private var alertMessage = ""
+    @State private var alertSuccess = false
+
 
     var body: some View {
         NavigationStack {
@@ -32,7 +37,7 @@ struct LoginView: View {
                         .padding(.horizontal)
 
                     VStack(spacing: 20) {
-                        TextField("Email", text: $viewModel.username)
+                        TextField("Email", text: $viewModel.email)
                             .keyboardType(.emailAddress)
                             .autocapitalization(.none)
                             .padding()
@@ -76,17 +81,33 @@ struct LoginView: View {
                         .padding(.trailing, 30)
                     }
 
-                    // NavigationLink is triggered by state
-                    NavigationLink(destination: DashboardView(), isActive: $navigateToDashboard) {
-                        EmptyView()
-                    }
 
                     Button(action: {
-                        if viewModel.login() {
-                            navigateToDashboard = true
-                        } else {
-                            loginFailed = true
-                            showAlert = true
+                        Task {
+                            await viewModel.login()
+
+                            if viewModel.isLoggedIn {
+                                alertTitle = "Success"
+                                alertMessage = "You have successfully logged in!"
+                                alertSuccess = true
+                                showCustomAlert = true
+
+                                // Wait 2 seconds before redirecting to DashboardView
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                                    showCustomAlert = false
+                                    // NO manual navigation needed — @AppStorage takes care of view switch
+                                }
+
+                            } else {
+                                alertTitle = "Login Failed"
+                                alertMessage = viewModel.errorMassege
+                                alertSuccess = false
+                                showCustomAlert = true
+
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                                    showCustomAlert = false
+                                }
+                            }
                         }
                     }) {
                         Text("Login")
@@ -98,6 +119,8 @@ struct LoginView: View {
                             .cornerRadius(12)
                             .shadow(radius: 5)
                     }
+                    .padding(.horizontal, 30)
+
                     .padding(.horizontal, 30)
                     .alert(isPresented: $showAlert) {
                         Alert(
@@ -112,6 +135,40 @@ struct LoginView: View {
                 .padding(.top, 40)
             }
         }
+        .overlay(
+            Group {
+                if showCustomAlert {
+                    VStack {
+                        Spacer()
+                        VStack(spacing: 16) {
+                            Image(systemName: alertSuccess ? "checkmark.circle.fill" : "xmark.octagon.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(alertSuccess ? .green : .red)
+                            
+                            Text(alertTitle)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            
+                            Text(alertMessage)
+                                .font(.subheadline)
+                                .multilineTextAlignment(.center)
+                                .foregroundColor(.secondary)
+                            
+                        }
+                        .padding()
+                        .frame(maxWidth: 300)
+                        .background(.ultraThinMaterial)
+                        .cornerRadius(20)
+                        .shadow(radius: 20)
+                        .padding(.bottom, 100)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .animation(.easeInOut, value: showCustomAlert)
+                    }
+                }
+            }
+        )
+
     }
 }
 struct Login_Previews: PreviewProvider {

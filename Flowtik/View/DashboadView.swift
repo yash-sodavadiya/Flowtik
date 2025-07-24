@@ -16,7 +16,7 @@ struct DashboardView: View {
         TaskModel(title: "Team Meeting Preparation", totalMinutes: 30),
         TaskModel(title: "Code Review", totalMinutes: 50)
     ]
-    
+//    @StateObject var 
     @State private var totalWorkedMinutes = 0
     @State private var timer: Timer?
     @State private var selectedTaskIndex: Int? = nil   // <- track selected index

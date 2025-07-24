@@ -8,7 +8,11 @@
 import Foundation
 
 class UserModel: Identifiable,Codable {
-    var userId: Int
-    var userName: String
-    var roleId: Int
+    var email: String
+    var password: String
+    
+    init(email: String, password: String) {
+        self.email = email
+        self.password = password
+    }
 }
