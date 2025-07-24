@@ -1,12 +1,12 @@
 import SwiftUI
 
-struct TaskModel: Identifiable {
-    let id = UUID()
-    let title: String
-    let totalMinutes: Int
-    var elapsedMinutes: Int = 0
-    var isRunning: Bool = false
-}
+//struct TaskModel: Identifiable {
+//    let id = UUID()
+//    let title: String
+//    let totalMinutes: Int
+//    var elapsedMinutes: Int = 0
+//    var isRunning: Bool = false
+//}
 
 struct DashboardView: View {
     @State private var tasks: [TaskModel] = [
