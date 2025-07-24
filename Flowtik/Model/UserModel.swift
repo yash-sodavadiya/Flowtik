@@ -10,5 +10,5 @@ import Foundation
 class UserModel: Identifiable,Codable {
     var userId: Int
     var userName: String
-    
+    var roleId: Int
 }
