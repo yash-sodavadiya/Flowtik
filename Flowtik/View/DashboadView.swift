@@ -19,6 +19,8 @@ struct DashboardView: View {
     
     @State private var totalWorkedMinutes = 0
     @State private var timer: Timer?
+    @State private var selectedTaskIndex: Int? = nil   // <- track selected index
+     @State private var isDetailViewActive = false      // <- for NavigationLink program
     
     // Some beautiful gradients for task cards
     private let cardGradients: [[Color]] = [
@@ -62,31 +64,55 @@ struct DashboardView: View {
                     // Task Cards
                     VStack(spacing: 16) {
                         ForEach(tasks.indices, id: \.self) { index in
-                            ColorfulTaskCard(
-                                taskTitle: tasks[index].title,
-                                elapsedMinutes: tasks[index].elapsedMinutes,
-                                totalMinutes: tasks[index].totalMinutes,
-                                isCompleted: tasks[index].elapsedMinutes >= tasks[index].totalMinutes,
-                                gradientColors: cardGradients[index % cardGradients.count],
-                                onToggle: {
-                                    toggleTimer(for: index)
-                                },
-                                isRunning: tasks[index].isRunning
-                            )
+                            Button(action:{
+                                selectedTaskIndex = index
+                                isDetailViewActive = true
+                            }){
+                                ColorfulTaskCard(
+                                    taskTitle: tasks[index].title,
+                                    elapsedMinutes: tasks[index].elapsedMinutes,
+                                    totalMinutes: tasks[index].totalMinutes,
+                                    isCompleted: tasks[index].elapsedMinutes >= tasks[index].totalMinutes,
+                                    gradientColors: cardGradients[index % cardGradients.count],
+                                    onToggle: {
+                                        toggleTimer(for: index)
+                                    },
+                                    onComplete: {
+                                        completeTask(at: index)
+                                    },
+                                    isRunning: tasks[index].isRunning
+                                )
+
+                            }
                         }
                     }
                     .padding(.horizontal)
                     
                     Spacer(minLength: 30)
+                    
+                    // Hidden NavigationLink
+                    NavigationLink(
+                        destination: selectedTaskIndex.map { index in
+                            TaskDetailView(task: $tasks[index])
+                        },
+                        isActive: $isDetailViewActive,
+                        label: { EmptyView() }
+                    )
+
                 }
             }
-            .navigationTitle("Dashboard")
+            .navigationTitle("Tasks")
             .onDisappear {
                 timer?.invalidate()
             }
         }
     }
-    
+    private func completeTask(at index: Int) {
+        timer?.invalidate()
+        tasks[index].elapsedMinutes = tasks[index].totalMinutes
+        tasks[index].isRunning = false
+    }
+
     // Toggle task timer, only one task can run at a time
     private func toggleTimer(for index: Int) {
         if tasks[index].isRunning {
@@ -171,32 +197,33 @@ struct ColorfulTaskCard: View {
     var isCompleted: Bool
     var gradientColors: [Color]
     var onToggle: () -> Void
+    var onComplete: () -> Void
     var isRunning: Bool
-    
+
     var progress: Double {
         guard totalMinutes > 0 else { return 0 }
         return Double(elapsedMinutes) / Double(totalMinutes)
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(taskTitle)
                 .font(.title3)
                 .bold()
                 .foregroundColor(.white)
-            
+
             ProgressView(value: progress)
                 .progressViewStyle(LinearProgressViewStyle(tint: .white))
                 .scaleEffect(x: 1, y: 5, anchor: .center)
                 .cornerRadius(10)
-            
+
             HStack {
                 Text("\(elapsedMinutes) / \(totalMinutes) min")
                     .foregroundColor(.white.opacity(0.85))
                     .font(.subheadline)
-                
+
                 Spacer()
-                
+
                 if isCompleted {
                     Label("Completed", systemImage: "checkmark.seal.fill")
                         .foregroundColor(.white)
@@ -213,19 +240,51 @@ struct ColorfulTaskCard: View {
                         .clipShape(Capsule())
                 }
             }
-            
-            Button(action: onToggle) {
-                HStack {
-                    Image(systemName: isRunning ? "pause.fill" : "play.fill")
-                    Text(isRunning ? "Stop" : "Start")
+
+            if isRunning {
+                HStack(spacing: 12) {
+                    Button(action: onToggle) {
+                        HStack {
+                            Image(systemName: "pause.fill")
+                            Text("Pause")
+                        }
+                        .font(.headline)
+                        .foregroundColor(gradientColors.first ?? .white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(15)
+                        .shadow(radius: 5)
+                    }
+
+                    Button(action: onComplete) {
+                        HStack {
+                            Image(systemName: "checkmark")
+                            Text("Complete")
+                        }
+                        .font(.headline)
+                        .foregroundColor(gradientColors.first ?? .white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.white)
+                        .cornerRadius(15)
+                        .shadow(radius: 5)
+                    }
                 }
-                .font(.headline)
-                .foregroundColor(gradientColors.first ?? .white)
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(Color.white)
-                .cornerRadius(15)
-                .shadow(radius: 5)
+            } else {
+                Button(action: onToggle) {
+                    HStack {
+                        Image(systemName: "play.fill")
+                        Text("Start")
+                    }
+                    .font(.headline)
+                    .foregroundColor(gradientColors.first ?? .white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.white)
+                    .cornerRadius(15)
+                    .shadow(radius: 5)
+                }
             }
         }
         .padding()
@@ -240,6 +299,7 @@ struct ColorfulTaskCard: View {
         .shadow(color: gradientColors.last?.opacity(0.5) ?? .black.opacity(0.3), radius: 10, x: 0, y: 5)
     }
 }
+
 
 
 struct Dashboard_Previews: PreviewProvider {

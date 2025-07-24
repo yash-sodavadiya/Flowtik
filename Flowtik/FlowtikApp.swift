@@ -11,7 +11,8 @@ import SwiftUI
 struct FlowtikApp: App {
     var body: some Scene {
         WindowGroup {
-            LoginView()
+//            LoginView()
+            DashboardView()
         }
     }
 }

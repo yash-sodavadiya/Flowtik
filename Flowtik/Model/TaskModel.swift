@@ -13,4 +13,5 @@ struct TaskModel: Identifiable {
     let totalMinutes: Int
     var elapsedMinutes: Int = 0
     var isRunning: Bool = false
+    
 }
