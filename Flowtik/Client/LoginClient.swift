@@ -10,7 +10,7 @@ import Foundation
 class LoginClient{
     static let shared = LoginClient()
     
-    let baseURL = "http://192.168.29.112:5112/api/Users/login"
+    let baseURL = "http://10.25.5.55:5112/api/Users/login"
     
     func login(email: String, password: String) async throws -> LoginResponse {
         guard let url = URL(string: baseURL) else {

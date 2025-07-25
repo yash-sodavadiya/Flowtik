@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Task Model
 //struct TaskModel: Identifiable {
 //    let id = UUID()
 //    let title: String
@@ -11,18 +12,22 @@ import SwiftUI
 struct DashboardView: View {
     @State private var tasks: [TaskModel] = [
         TaskModel(title: "Update Project Report", totalMinutes: 60),
-        TaskModel(title: "Client Follow-Up", totalMinutes: 45),
-        TaskModel(title: "UI Design Revision", totalMinutes: 90),
-        TaskModel(title: "Team Meeting Preparation", totalMinutes: 30),
-        TaskModel(title: "Code Review", totalMinutes: 50)
+//        TaskModel(title: "Client Follow-Up", totalMinutes: 45),
+//        TaskModel(title: "UI Design Revision", totalMinutes: 90),
+//        TaskModel(title: "Team Meeting Preparation", totalMinutes: 30),
+//        TaskModel(title: "Code Review", totalMinutes: 50)
     ]
-//    @StateObject var 
+    @StateObject private var taskView = TaskViewModel()
     @State private var totalWorkedMinutes = 0
     @State private var timer: Timer?
-    @State private var selectedTaskIndex: Int? = nil   // <- track selected index
-     @State private var isDetailViewActive = false      // <- for NavigationLink program
-    
-    // Some beautiful gradients for task cards
+    @State private var selectedTaskIndex: Int? = nil
+    @State private var isDetailViewActive = false
+    @StateObject private var profileView = ProfileViewModel()
+    @State private var isAddTask: Bool = false
+    @State private var isRunningDict: [Int: Bool] = [:]
+    @State private var elapsedMinutesDict: [Int: Int] = [:]
+
+
     private let cardGradients: [[Color]] = [
         [Color.purple, Color.blue],
         [Color.orange, Color.red],
@@ -35,9 +40,9 @@ struct DashboardView: View {
         NavigationView {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
-                    // Header Section
+                    // Header
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Welcome back, John Doe 👋")
+                        Text("Welcome back, \(profileView.profile?.userName ?? "demo") 👋")
                             .font(.largeTitle)
                             .fontWeight(.bold)
                         
@@ -47,15 +52,14 @@ struct DashboardView: View {
                     .padding(.horizontal)
                     .padding(.top)
                     
-                    // Work Summary
+                    // Summary
                     HStack(spacing: 20) {
                         SummaryCard(title: "Worked Today", value: minutesToHours(totalWorkedMinutes), systemImage: "clock.fill", color: Color.blue)
-                        
                         SummaryCard(title: "Daily Goal", value: "8h 0m", systemImage: "flag.fill", color: Color.green)
                     }
                     .padding(.horizontal)
                     
-                    // Task List Title
+                    // Title
                     Text("Your Tasks")
                         .font(.title2)
                         .fontWeight(.semibold)
@@ -63,43 +67,98 @@ struct DashboardView: View {
                     
                     // Task Cards
                     VStack(spacing: 16) {
-                        ForEach(tasks.indices, id: \.self) { index in
+                        ForEach(taskView.tasks.indices, id: \.self) { index in
                             Button(action:{
                                 selectedTaskIndex = index
                                 isDetailViewActive = true
-                            }){
+                            }) {
                                 ColorfulTaskCard(
-                                    taskTitle: tasks[index].title,
-                                    elapsedMinutes: tasks[index].elapsedMinutes,
-                                    totalMinutes: tasks[index].totalMinutes,
-                                    isCompleted: tasks[index].elapsedMinutes >= tasks[index].totalMinutes,
+                                    taskTitle: taskView.tasks[index].title,
+                                    elapsedMinutes: Int(taskView.tasks[index].totalHoursWorked * 60),
+                                    totalMinutes: Int(taskView.tasks[index].estimatedHours * 60),
+                                    isCompleted: taskView.tasks[index].totalHoursWorked >= Double(taskView.tasks[index].estimatedHours),
                                     gradientColors: cardGradients[index % cardGradients.count],
                                     onToggle: {
-                                        toggleTimer(for: index)
+//                                        Task {
+//                                                if let id = taskView.tasks[index].taskId {
+//                                                    await taskView.start(taskId: id)
+//                                                }
+                                                toggleTimer(for: index)
+//                                            }
                                     },
                                     onComplete: {
                                         completeTask(at: index)
                                     },
-                                    isRunning: tasks[index].isRunning
+                                    
+                                    isRunning: taskView.tasks[index].isCurrentlyActive
                                 )
 
                             }
                         }
                     }
                     .padding(.horizontal)
+                    .sheet(isPresented: $isAddTask) {
+                        AddTaskView(viewModel: taskView)
+                    }
+                    // Add Task Button
+                    if taskView.tasks.isEmpty {
+                        Button(action: {
+                            isAddTask = true
+                        }) {
+                            HStack {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                Text("Add Task")
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.blue, Color.purple]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                )
+                            )
+                            .cornerRadius(20)
+                            .shadow(color: Color.black.opacity(0.2), radius: 8, x: 0, y: 5)
+                            .padding(.horizontal)
+                        }
+                    } else {
+                        Button(action: {}) {
+                            HStack {
+                                Image(systemName: "plus")
+                                    .font(.title2)
+                                Text("Add Task")
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundColor(.gray)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(20)
+                            .padding(.horizontal)
+                            .opacity(0.6)
+                        }
+                        .disabled(true)
+                    }
                     
                     Spacer(minLength: 30)
                     
-                    // Hidden NavigationLink
+                    
                     NavigationLink(
                         destination: selectedTaskIndex.map { index in
-                            TaskDetailView(task: $tasks[index])
+                            TaskDetailView(task: $taskView.tasks[index])
                         },
                         isActive: $isDetailViewActive,
                         label: { EmptyView() }
                     )
-
                 }
+            }
+            .task {
+                await taskView.loadTasks()
+                await profileView.loadUser()
             }
             .navigationTitle("Tasks")
             .onDisappear {
@@ -107,48 +166,65 @@ struct DashboardView: View {
             }
         }
     }
+    
     private func completeTask(at index: Int) {
         timer?.invalidate()
         tasks[index].elapsedMinutes = tasks[index].totalMinutes
         tasks[index].isRunning = false
     }
 
-    // Toggle task timer, only one task can run at a time
     private func toggleTimer(for index: Int) {
-        if tasks[index].isRunning {
-            // Stop timer
-            tasks[index].isRunning = false
+        // Stop all other tasks
+        for i in taskView.tasks.indices {
+            taskView.tasks[i].isCurrentlyActive = false
+        }
+
+        // If already active, stop timer
+        if taskView.tasks[index].isCurrentlyActive {
+            taskView.tasks[index].isCurrentlyActive = false
             timer?.invalidate()
             timer = nil
         } else {
-            // Stop all other tasks
-            for i in tasks.indices {
-                tasks[i].isRunning = false
-            }
-            tasks[index].isRunning = true
-            
+            // Start timer for selected task
+            taskView.tasks[index].isCurrentlyActive = true
             timer?.invalidate()
+
             timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { _ in
-                if tasks[index].elapsedMinutes < tasks[index].totalMinutes {
-                    tasks[index].elapsedMinutes += 1
+                guard index < taskView.tasks.count else {
+                    timer?.invalidate()
+                    timer = nil
+                    return
+                }
+
+                var task = taskView.tasks[index]
+
+                let elapsedMinutes = task.totalHoursWorked * 60.0
+                let estimatedMinutes = Double(task.estimatedHours) * 60.0
+
+
+                if elapsedMinutes < estimatedMinutes {
+                    task.totalHoursWorked += 1.0 / 60.0 // 1 minute
                     totalWorkedMinutes += 1
+                    taskView.tasks[index] = task
                 } else {
-                    tasks[index].isRunning = false
+                    taskView.tasks[index].isCurrentlyActive = false
                     timer?.invalidate()
                     timer = nil
                 }
             }
         }
     }
+
+
+
+
     
-    // Format date
     private func formattedDate() -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         return formatter.string(from: Date())
     }
     
-    // Convert minutes to hours and minutes string
     private func minutesToHours(_ minutes: Int) -> String {
         let hours = minutes / 60
         let mins = minutes % 60
@@ -156,7 +232,7 @@ struct DashboardView: View {
     }
 }
 
-// Summary Card View for Worked Today & Daily Goal
+// Summary Card
 struct SummaryCard: View {
     var title: String
     var value: String
@@ -189,7 +265,7 @@ struct SummaryCard: View {
     }
 }
 
-// Colorful Task Card with start/stop button & progress bar
+// Task Card
 struct ColorfulTaskCard: View {
     var taskTitle: String
     var elapsedMinutes: Int
@@ -243,7 +319,7 @@ struct ColorfulTaskCard: View {
 
             if isRunning {
                 HStack(spacing: 12) {
-                    Button(action: onToggle) {
+                    Button(action: onToggle ) {
                         HStack {
                             Image(systemName: "pause.fill")
                             Text("Pause")
@@ -300,11 +376,18 @@ struct ColorfulTaskCard: View {
     }
 }
 
-
+// Dummy Task Detail View (you can customize it)
+//struct TaskDetailView: View {
+//    @Binding var task: TaskModel
+//    
+//    var body: some View {
+//        Text("Task Detail for \(task.title)")
+//            .font(.title)
+//    }
+//}
 
 struct Dashboard_Previews: PreviewProvider {
     static var previews: some View {
         DashboardView()
     }
 }
-

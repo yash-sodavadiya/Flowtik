@@ -3,7 +3,7 @@ import Foundation
 class ProfileClient {
     static let shared = ProfileClient()
     
-    let baseURL = "http://192.168.29.112:5112/api/Users"
+    let baseURL = "http://10.25.5.55:5112/api/Users"
 
     func fetchUser(by id: Int) async throws -> ProfileModel {
         guard let url = URL(string: "\(baseURL)/\(id)") else {
